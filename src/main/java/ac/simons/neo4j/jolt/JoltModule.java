@@ -15,33 +15,77 @@
  */
 package ac.simons.neo4j.jolt;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.function.Function;
 
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.spatial.Point;
 
-public class JoltModule extends SimpleModule {
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdDelegatingSerializer;
+
+public final class JoltModule extends SimpleModule {
+
+	private static volatile JoltModule INSTANCE;
 
 	private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
 
-	public JoltModule() {
+	public static JoltModule getInstance() {
 
-		addSerializer(Integer.class,
-			new JoltDelegatingValueSerializer<>(Integer.class, Sigil.INTEGER, String::valueOf));
-		addSerializer(Long.class, new JoltDelegatingValueSerializer<>(Long.class, Sigil.INTEGER, String::valueOf));
-		addSerializer(Double.class, new JoltDelegatingValueSerializer<>(Double.class, Sigil.REAL, String::valueOf));
-		addSerializer(String.class,
-			new JoltDelegatingValueSerializer<>(String.class, Sigil.UNICODE, Function.identity()));
-		addSerializer(byte.class,
-			new JoltDelegatingValueSerializer<>(byte.class, Sigil.BYTE, b -> toHexString(new byte[] { b })));
-		addSerializer(Byte.class,
-			new JoltDelegatingValueSerializer<>(Byte.class, Sigil.BYTE, b -> toHexString(new byte[] { b })));
-		addSerializer(byte[].class,
-			new JoltDelegatingValueSerializer<>(byte[].class, Sigil.BYTE, JoltModule::toHexString));
+		JoltModule instance = JoltModule.INSTANCE;
+		if (instance == null) {
+			synchronized (JoltModule.class) {
+				instance = JoltModule.INSTANCE;
+				if (instance == null) {
+					JoltModule.INSTANCE = new JoltModule();
+					instance = JoltModule.INSTANCE;
+				}
+			}
+		}
+		return instance;
+	}
 
-		var listSerializer = new JoltListSerializer();
-		addSerializer(listSerializer.handledType(), listSerializer);
-		var mapSerializer = new JoltMapSerializer();
-		addSerializer(mapSerializer.handledType(), mapSerializer);
+	private JoltModule() {
+
+		if (INSTANCE != null) {
+			throw new IllegalStateException("JoltModule has already been created.");
+		}
+
+		this.addSerializer(new JoltDelegatingValueSerializer<>(Integer.class, Sigil.INTEGER, String::valueOf));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(Long.class, Sigil.INTEGER, String::valueOf));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(Double.class, Sigil.REAL, String::valueOf));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(String.class, Sigil.UNICODE, Function.identity()));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(byte[].class, Sigil.BINARY, JoltModule::toHexString));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(Point.class, Sigil.SPATIAL, new PointToWKT()));
+
+		this.addSerializer(new JoltDelegatingValueSerializer<>(LocalDate.class, Sigil.TIME,
+			DateTimeFormatter.ISO_LOCAL_DATE::format));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(OffsetTime.class, Sigil.TIME,
+			DateTimeFormatter.ISO_OFFSET_TIME::format));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(LocalTime.class, Sigil.TIME,
+			DateTimeFormatter.ISO_LOCAL_TIME::format));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(ZonedDateTime.class, Sigil.TIME,
+			DateTimeFormatter.ISO_ZONED_DATE_TIME::format));
+		this.addSerializer(new JoltDelegatingValueSerializer<>(LocalDateTime.class, Sigil.TIME,
+			DateTimeFormatter.ISO_LOCAL_DATE_TIME::format));
+		// TODO Duration missing
+
+		this.addSerializer(new StdDelegatingSerializer(Label.class, new JoltLabelConverter()));
+		this.addSerializer(new StdDelegatingSerializer(RelationshipType.class, new JoltRelationshipTypeConverter()));
+
+		this.addSerializer(new JoltNodeSerializer());
+		this.addSerializer(new JoltRelationshipSerializer());
+
+		this.addSerializer(new JoltMapSerializer());
+		this.addSerializer(new JoltListSerializer());
+
+		this.addSerializer(new JoltRecordEventSerializer());
 	}
 
 	private static String toHexString(byte[] bytes) {

@@ -16,29 +16,40 @@
 package ac.simons.neo4j.jolt;
 
 import java.io.IOException;
-import java.util.function.Function;
+import java.util.Collections;
+import java.util.Optional;
+
+import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
-final class JoltDelegatingValueSerializer<T> extends StdSerializer<T> {
+final class JoltNodeSerializer extends StdSerializer<Node> {
 
-	private final Sigil sigil;
-	private final Function<T, String> converter;
-
-	JoltDelegatingValueSerializer(Class<T> t, Sigil sigil, Function<T, String> converter) {
-		super(t);
-		this.sigil = sigil;
-		this.converter = converter;
+	JoltNodeSerializer() {
+		super(Node.class);
 	}
 
 	@Override
-	public final void serialize(T value, JsonGenerator generator, SerializerProvider provider) throws IOException {
+	public void serialize(Node node, JsonGenerator generator, SerializerProvider provider) throws IOException {
 
-		generator.writeStartObject(value);
-		generator.writeFieldName(sigil.getValue());
-		generator.writeString(converter.apply(value));
+		generator.writeStartObject(node);
+		generator.writeFieldName(Sigil.NODE.getValue());
+
+		generator.writeStartObject();
+
+		generator.writeFieldName("id");
+		generator.writeObject(node.getId());
+
+		generator.writeFieldName("labels");
+		generator.writeObject(node.getLabels());
+
+		generator.writeFieldName("properties");
+		var properties = Optional.ofNullable(node.getAllProperties()).orElseGet(Collections::emptyMap);
+		generator.writeObject(properties);
+
+		generator.writeEndObject();
 		generator.writeEndObject();
 	}
 }

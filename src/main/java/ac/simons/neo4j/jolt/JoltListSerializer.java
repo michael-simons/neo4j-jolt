@@ -21,24 +21,27 @@ import java.util.List;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.type.CollectionLikeType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
 final class JoltListSerializer extends StdSerializer<List<?>> {
 
+	static final CollectionLikeType HANDLED_TYPE = TypeFactory
+		.defaultInstance().constructCollectionLikeType(List.class, Object.class);
+
 	JoltListSerializer() {
-		super(TypeFactory.defaultInstance().constructCollectionLikeType(List.class, Object.class));
+		super(HANDLED_TYPE);
 	}
 
 	@Override
-	public void serialize(List<?> value, JsonGenerator generator, SerializerProvider provider) throws IOException {
+	public void serialize(List<?> list, JsonGenerator generator, SerializerProvider provider) throws IOException {
 
-		generator.writeStartObject();
+		generator.writeStartObject(list);
 		generator.writeFieldName(Sigil.LIST.getValue());
-		generator.writeStartArray(value);
+		generator.writeStartArray(list);
 
-		for (var entry : value) {
-			var elementSerializer = provider.findValueSerializer(entry.getClass());
-			elementSerializer.serialize(entry, generator, provider);
+		for (var entry : list) {
+			generator.writeObject(entry);
 		}
 
 		generator.writeEndArray();

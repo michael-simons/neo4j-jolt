@@ -15,27 +15,26 @@
  */
 package ac.simons.neo4j.jolt;
 
-enum Sigil {
+import static java.util.stream.Collectors.*;
 
-	INTEGER("Z"),
-	REAL("R"),
-	UNICODE("U"),
-	BINARY("#"),
-	LIST("[]"),
-	MAP("{}"),
-	TIME("T"),
-	SPATIAL("@"),
-	NODE("()"),
-	RELATIONSHIP("->"),
-	PATH("..");
+import java.util.function.Function;
 
-	Sigil(String value) {
-		this.value = value;
-	}
+import org.neo4j.graphdb.spatial.Point;
 
-	private final String value;
+final class PointToWKT implements Function<Point, String> {
 
-	public String getValue() {
-		return value;
+	@Override
+	public String apply(Point point) {
+
+		var coordinates = point.getCoordinate().getCoordinate();
+		var wkt = new StringBuilder()
+			.append("SRID=")
+			.append(point.getCRS().getCode())
+			.append(";POINT")
+			.append(coordinates.size() == 3 ? " Z " : "")
+			.append("(")
+			.append(coordinates.stream().map(String::valueOf).collect(joining(" ")))
+			.append(")");
+		return wkt.toString();
 	}
 }

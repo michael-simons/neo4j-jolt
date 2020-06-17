@@ -16,29 +16,35 @@
 package ac.simons.neo4j.jolt;
 
 import java.io.IOException;
-import java.util.function.Function;
+
+import org.neo4j.server.http.cypher.format.api.RecordEvent;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
-final class JoltDelegatingValueSerializer<T> extends StdSerializer<T> {
+final class JoltRecordEventSerializer extends StdSerializer<RecordEvent> {
 
-	private final Sigil sigil;
-	private final Function<T, String> converter;
-
-	JoltDelegatingValueSerializer(Class<T> t, Sigil sigil, Function<T, String> converter) {
-		super(t);
-		this.sigil = sigil;
-		this.converter = converter;
+	JoltRecordEventSerializer() {
+		super(RecordEvent.class);
 	}
 
 	@Override
-	public final void serialize(T value, JsonGenerator generator, SerializerProvider provider) throws IOException {
+	public void serialize(RecordEvent event, JsonGenerator generator, SerializerProvider provider) throws IOException {
 
-		generator.writeStartObject(value);
-		generator.writeFieldName(sigil.getValue());
-		generator.writeString(converter.apply(value));
+		generator.writeStartObject();
+
+		for (var column : event.getColumns()) {
+
+			if(column.equals("arrayOfStrings")) {
+				System.out.println(event.getValue(column).getClass());
+			}
+
+			generator.writeFieldName(column);
+			generator.writeObject(event.getValue(column));
+
+		}
+
 		generator.writeEndObject();
 	}
 }

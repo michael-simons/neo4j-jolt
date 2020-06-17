@@ -15,27 +15,14 @@
  */
 package ac.simons.neo4j.jolt;
 
-enum Sigil {
+import org.neo4j.graphdb.Label;
 
-	INTEGER("Z"),
-	REAL("R"),
-	UNICODE("U"),
-	BINARY("#"),
-	LIST("[]"),
-	MAP("{}"),
-	TIME("T"),
-	SPATIAL("@"),
-	NODE("()"),
-	RELATIONSHIP("->"),
-	PATH("..");
+import com.fasterxml.jackson.databind.util.StdConverter;
 
-	Sigil(String value) {
-		this.value = value;
-	}
+final class JoltLabelConverter extends StdConverter<Label, String> {
 
-	private final String value;
-
-	public String getValue() {
-		return value;
+	@Override
+	public String convert(Label value) {
+		return value.name();
 	}
 }
