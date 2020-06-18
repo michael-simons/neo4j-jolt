@@ -16,7 +16,7 @@
 package ac.simons.neo4j.jolt;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 
 import org.neo4j.graphdb.Relationship;
@@ -32,7 +32,8 @@ final class JoltRelationshipSerializer extends StdSerializer<Relationship> {
 	}
 
 	@Override
-	public void serialize(Relationship relationship, JsonGenerator generator, SerializerProvider provider) throws IOException {
+	public void serialize(Relationship relationship, JsonGenerator generator, SerializerProvider provider)
+		throws IOException {
 
 		generator.writeStartObject(relationship);
 		generator.writeFieldName(Sigil.RELATIONSHIP.getValue());
@@ -52,7 +53,7 @@ final class JoltRelationshipSerializer extends StdSerializer<Relationship> {
 		generator.writeObject(relationship.getEndNodeId());
 
 		generator.writeFieldName("properties");
-		var properties = Optional.ofNullable(relationship.getAllProperties()).orElseGet(Collections::emptyMap);
+		var properties = Optional.ofNullable(relationship.getAllProperties()).orElseGet(Map::of);
 		generator.writeObject(properties);
 
 		generator.writeEndObject();

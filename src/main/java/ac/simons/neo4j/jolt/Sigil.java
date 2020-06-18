@@ -27,7 +27,9 @@ enum Sigil {
 	SPATIAL("@"),
 	NODE("()"),
 	RELATIONSHIP("->"),
-	PATH("..");
+	PATH(".."),
+	BOOLEAN("?"),
+	NULL("");
 
 	Sigil(String value) {
 		this.value = value;

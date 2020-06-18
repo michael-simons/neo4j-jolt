@@ -46,7 +46,42 @@ class JoltSerializerTest {
 	JoltSerializerTest() {
 
 		this.objectMapper = new ObjectMapper();
-		this.objectMapper.registerModule(JoltModule.getInstance());
+		this.objectMapper.registerModule(JoltModule.DEFAULT.getInstance());
+	}
+
+	@Nested
+	class SpareMode {
+
+		private ObjectMapper spareObjectMapper;
+
+		SpareMode() {
+
+			this.spareObjectMapper = new ObjectMapper();
+			this.spareObjectMapper.registerModule(JoltModule.SPARSE.getInstance());
+		}
+
+		@Test
+		void shouldUseJSONString() throws JsonProcessingException {
+
+			spareObjectMapper = new ObjectMapper();
+			var result = spareObjectMapper.writeValueAsString("Hello, World");
+			assertThat(result).isEqualTo("\"Hello, World\"");
+		}
+
+		@Test
+		void shouldUseJSONBoolean() throws JsonProcessingException {
+
+			spareObjectMapper = new ObjectMapper();
+			var result = spareObjectMapper.writeValueAsString(true);
+			assertThat(result).isEqualTo("true");
+		}
+
+		@Test
+		void shouldUseJSONList() throws JsonProcessingException {
+
+			var result = spareObjectMapper.writeValueAsString(List.of(1, 2, "3"));
+			assertThat(result).isEqualTo("[1,2,\"3\"]");
+		}
 	}
 
 	@Nested
@@ -57,6 +92,13 @@ class JoltSerializerTest {
 
 			var result = objectMapper.writeValueAsString(123);
 			assertThat(result).isEqualTo("{\"Z\":\"123\"}");
+		}
+
+		@Test
+		void shouldSerializeBoolean() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString(true);
+			assertThat(result).isEqualTo("{\"?\":\"true\"}");
 		}
 
 		@Test
@@ -114,7 +156,7 @@ class JoltSerializerTest {
 		@Test
 		void shouldSerializeArrays() throws JsonProcessingException {
 
-			var result = objectMapper.writeValueAsString(new String[] {"A", "B"});
+			var result = objectMapper.writeValueAsString(new String[] { "A", "B" });
 			assertThat(result).isEqualTo("[{\"U\":\"A\"},{\"U\":\"B\"}]");
 		}
 
@@ -214,7 +256,8 @@ class JoltSerializerTest {
 
 			var result = objectMapper.writeValueAsString(relationship);
 			assertThat(result)
-				.isEqualTo("{\"->\":{\"id\":{\"Z\":\"4711\"},\"type\":{\"U\":\"KNOWS\"},\"startNodeId\":{\"Z\":\"123\"},\"endNodeId\":{\"Z\":\"124\"},\"properties\":{\"{}\":{\"since\":{\"Z\":\"1999\"}}}}}");
+				.isEqualTo(
+					"{\"->\":{\"id\":{\"Z\":\"4711\"},\"type\":{\"U\":\"KNOWS\"},\"startNodeId\":{\"Z\":\"123\"},\"endNodeId\":{\"Z\":\"124\"},\"properties\":{\"{}\":{\"since\":{\"Z\":\"1999\"}}}}}");
 
 		}
 	}
