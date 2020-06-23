@@ -27,6 +27,7 @@ enum Sigil {
 	SPATIAL("@"),
 	NODE("()"),
 	RELATIONSHIP("->"),
+	RELATIONSHIP_REVERSED("<-"),
 	PATH(".."),
 	BOOLEAN("?"),
 	NULL("");

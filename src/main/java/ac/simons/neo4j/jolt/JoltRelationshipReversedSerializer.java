@@ -15,43 +15,40 @@
  */
 package ac.simons.neo4j.jolt;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-
-import org.neo4j.graphdb.Label;
-import org.neo4j.graphdb.Node;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
-final class JoltNodeSerializer extends StdSerializer<Node> {
+import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
 
-	JoltNodeSerializer() {
-		super(Node.class);
+import org.neo4j.graphdb.Relationship;
+
+final class JoltRelationshipReversedSerializer extends StdSerializer<JoltRelationship> {
+
+	JoltRelationshipReversedSerializer() {
+		super(JoltRelationship.class);
 	}
 
 	@Override
-	public void serialize(Node node, JsonGenerator generator, SerializerProvider provider) throws IOException {
+	public void serialize(JoltRelationship relationship, JsonGenerator generator, SerializerProvider provider)
+		throws IOException {
 
-		generator.writeStartObject(node);
-		generator.writeFieldName(Sigil.NODE.getValue());
-
-		generator.writeStartArray();
-
-		generator.writeNumber( node.getId() );
+		generator.writeStartObject(relationship);
+		generator.writeFieldName(Sigil.RELATIONSHIP_REVERSED.getValue());
 
 		generator.writeStartArray();
-		for ( Label label : node.getLabels() )
-		{
-			generator.writeString( label.name() );
-		}
-		generator.writeEndArray();
 
-		var properties = Optional.ofNullable(node.getAllProperties()).orElseGet(Collections::emptyMap);
+		generator.writeNumber( relationship.getId() );
 
+		generator.writeNumber( relationship.getStartNodeId() );
+
+		generator.writeString( relationship.getType().name() );
+
+		generator.writeNumber( relationship.getEndNodeId() );
+
+		var properties = Optional.ofNullable(relationship.getAllProperties()).orElseGet(Map::of);
 		generator.writeStartObject();
 
 		for (var entry : properties.entrySet()) {
@@ -62,7 +59,6 @@ final class JoltNodeSerializer extends StdSerializer<Node> {
 		generator.writeEndObject();
 
 		generator.writeEndArray();
-
 		generator.writeEndObject();
 	}
 }

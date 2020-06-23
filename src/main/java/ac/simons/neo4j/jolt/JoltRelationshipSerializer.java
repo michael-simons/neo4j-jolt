@@ -38,25 +38,27 @@ final class JoltRelationshipSerializer extends StdSerializer<Relationship> {
 		generator.writeStartObject(relationship);
 		generator.writeFieldName(Sigil.RELATIONSHIP.getValue());
 
+		generator.writeStartArray();
+
+		generator.writeNumber( relationship.getId() );
+
+		generator.writeNumber( relationship.getStartNodeId() );
+
+		generator.writeString( relationship.getType().name() );
+
+		generator.writeNumber( relationship.getEndNodeId() );
+
+		var properties = Optional.ofNullable(relationship.getAllProperties()).orElseGet(Map::of);
 		generator.writeStartObject();
 
-		generator.writeFieldName("id");
-		generator.writeObject(relationship.getId());
-
-		generator.writeFieldName("type");
-		generator.writeObject(relationship.getType());
-
-		generator.writeFieldName("startNodeId");
-		generator.writeObject(relationship.getStartNodeId());
-
-		generator.writeFieldName("endNodeId");
-		generator.writeObject(relationship.getEndNodeId());
-
-		generator.writeFieldName("properties");
-		var properties = Optional.ofNullable(relationship.getAllProperties()).orElseGet(Map::of);
-		generator.writeObject(properties);
+		for (var entry : properties.entrySet()) {
+			generator.writeFieldName(entry.getKey());
+			generator.writeObject(entry.getValue());
+		}
 
 		generator.writeEndObject();
+
+		generator.writeEndArray();
 		generator.writeEndObject();
 	}
 }

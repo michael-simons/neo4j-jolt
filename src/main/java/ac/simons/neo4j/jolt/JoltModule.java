@@ -97,6 +97,8 @@ public enum JoltModule {
 
 			this.addSerializer(new JoltNodeSerializer());
 			this.addSerializer(new JoltRelationshipSerializer());
+			this.addSerializer(new JoltRelationshipReversedSerializer());
+			this.addSerializer(new JoltPathSerializer());
 
 			this.addSerializer(new JoltMapSerializer());
 

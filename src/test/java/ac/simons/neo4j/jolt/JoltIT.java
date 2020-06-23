@@ -64,7 +64,9 @@ class JoltIT {
 	void node() throws JsonProcessingException {
 
 		try (var tx = neo4j.defaultDatabaseService().beginTx()) {
-			var result = tx.execute("CREATE (n:MyLabel {aNumber: 1234, aLargeNumber: 2147483649, aFloat: 3.7, aString: 'a string', aDate: date('2015-07-21'), arrayOfStrings: ['s1', 's2'], arrayOfDates: [date('2015-07-29'), date('2015-07-30')], aPoint: point({ latitude:toFloat('13.43'), longitude:toFloat('56.21')})}) RETURN n as N");
+			var result = tx.execute("CREATE (n:MyLabel {aNumber: 1234, aLargeNumber: 2147483649, aFloat: 3.7, aString: 'a string', aDate: date('2015-07-21')," +
+									" arrayOfStrings: ['s1', 's2'], arrayOfDates: [date('2015-07-29'), date('2015-07-30')]," +
+									" aPoint: point({ latitude:toFloat('13.43'), longitude:toFloat('56.21')})}) RETURN n as awesomeNode");
 			// This is what the server JSON code would do...
 			result.accept(row ->
 			{
@@ -73,6 +75,24 @@ class JoltIT {
 				System.out.println(formattedRow);
 				return true;
 			});
+		}
+	}
+
+	@Test
+	void path() throws JsonProcessingException {
+
+		try (var tx = neo4j.defaultDatabaseService().beginTx()) {
+
+			tx.execute( "CREATE (bob:Person {name: 'Bob James', age: 30})-[:KNOWS {since: 1978}]->(alice:Person {name: 'Alice Smith'})<-[:KNOWS]-(charlie:Person {name: 'Charlie Jackson'})" );
+			var result = tx.execute("MATCH (bob:Person {name: 'Bob James'}),(charlie:Person {name: 'Charlie Jackson'}), p = shortestPath((bob)-[*..15]-(charlie)) RETURN p AS awesomePath");
+			// This is what the server JSON code would do...
+			result.accept(row ->
+						  {
+							  var writer = objectMapper.writerWithDefaultPrettyPrinter();
+							  var formattedRow = writer.writeValueAsString(new RecordEvent(result.columns(), row::get));
+							  System.out.println(formattedRow);
+							  return true;
+						  });
 		}
 	}
 
