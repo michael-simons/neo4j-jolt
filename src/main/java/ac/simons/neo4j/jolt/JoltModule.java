@@ -66,8 +66,8 @@ public enum JoltModule {
 				this.addSerializer(new JoltDelegatingValueSerializer<>(int.class, Sigil.INTEGER, String::valueOf));
 				this.addSerializer(new JoltDelegatingValueSerializer<>(Integer.class, Sigil.INTEGER, String::valueOf));
 
-				this.addSerializer(new JoltDelegatingValueSerializer<>(long.class, Sigil.INTEGER, String::valueOf));
-				this.addSerializer(new JoltDelegatingValueSerializer<>(Long.class, Sigil.INTEGER, String::valueOf));
+				this.addSerializer(new JoltLongSerializer<>(long.class));
+				this.addSerializer(new JoltLongSerializer<>(Long.class));
 
 				this.addSerializer(new JoltDelegatingValueSerializer<>(Void.class, Sigil.BOOLEAN, String::valueOf));
 				this.addSerializer(new JoltListSerializer());

@@ -88,6 +88,13 @@ class JoltSerializerTest {
 	class SimpleTypes {
 
 		@Test
+		void shouldSerializeNull() throws JsonProcessingException
+		{
+			var result = objectMapper.writeValueAsString( null );
+			assertThat( result ).isEqualTo( "null" );
+		}
+
+		@Test
 		void shouldSerializeInteger() throws JsonProcessingException {
 
 			var result = objectMapper.writeValueAsString(123);
@@ -102,10 +109,24 @@ class JoltSerializerTest {
 		}
 
 		@Test
-		void shouldSerializeLong() throws JsonProcessingException {
+		void shouldSerializeLongInsideInt32Range() throws JsonProcessingException {
 
 			var result = objectMapper.writeValueAsString(123L);
 			assertThat(result).isEqualTo("{\"Z\":\"123\"}");
+		}
+
+		@Test
+		void shouldSerializeLongAboveInt32Range() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString((long) Integer.MAX_VALUE + 1);
+			assertThat(result).isEqualTo("{\"R\":\"2147483648\"}");
+		}
+
+		@Test
+		void shouldSerializeLongBelowInt32Range() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString((long) Integer.MIN_VALUE - 1);
+			assertThat(result).isEqualTo("{\"R\":\"-2147483649\"}");
 		}
 
 		@Test
