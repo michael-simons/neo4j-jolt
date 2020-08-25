@@ -18,6 +18,14 @@ package ac.simons.neo4j.jolt;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.sql.Time;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -33,6 +41,8 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.values.storable.CoordinateReferenceSystem;
+import org.neo4j.values.storable.DurationValue;
+import org.neo4j.values.storable.TemporalValue;
 import org.neo4j.values.storable.Values;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -50,11 +60,12 @@ class JoltSerializerTest {
 	}
 
 	@Nested
-	class SpareMode {
+	class SparseMode
+	{
 
 		private ObjectMapper spareObjectMapper;
 
-		SpareMode() {
+		SparseMode() {
 
 			this.spareObjectMapper = new ObjectMapper();
 			this.spareObjectMapper.registerModule(JoltModule.SPARSE.getInstance());
@@ -149,6 +160,65 @@ class JoltSerializerTest {
 			var point = Values.pointValue(CoordinateReferenceSystem.WGS84, 12.994823, 55.612191);
 			var result = objectMapper.writeValueAsString(point);
 			assertThat(result).isEqualTo("{\"@\":\"SRID=4326;POINT(12.994823 55.612191)\"}");
+		}
+	}
+
+	@Nested
+	class DateTimeDuration
+	{
+		@Test
+		void shouldSerializeDuration() throws JsonProcessingException {
+			var duration = DurationValue.duration( Duration.ofDays( 20 ) );
+			var result = objectMapper.writeValueAsString(duration);
+			assertThat(result).isEqualTo("{\"T\":\"PT480H\"}");
+		}
+
+		@Test
+		void shouldSerializeLargeDuration() throws JsonProcessingException {
+			var durationString = "P3Y6M4DT12H30M5S";
+			var durationValue = DurationValue.parse( durationString );
+			var result = objectMapper.writeValueAsString(durationValue);
+			assertThat(result).isEqualTo("{\"T\":\"" + durationString + "\"}");
+		}
+
+		@Test
+		void shouldSerializeDate() throws JsonProcessingException {
+			var dateString = "2020-08-25";
+			var date = LocalDate.parse( dateString );
+			var result = objectMapper.writeValueAsString(date);
+			assertThat(result).isEqualTo("{\"T\":\"" +dateString +"\"}");
+		}
+
+		@Test
+		void shouldSerializeTime() throws JsonProcessingException {
+			var timeString = "12:52:58.513775";
+			var time = LocalTime.parse(timeString);
+			var result = objectMapper.writeValueAsString(time);
+			assertThat(result).isEqualTo("{\"T\":\"" +timeString +"\"}");
+		}
+
+		@Test
+		void shouldSerializeOffsetTime() throws JsonProcessingException {
+			var offsetTimeString = "12:55:10.775607+01:00";
+			var time = OffsetTime.parse(offsetTimeString);
+			var result = objectMapper.writeValueAsString(time);
+			assertThat(result).isEqualTo("{\"T\":\"" +offsetTimeString +"\"}");
+		}
+
+		@Test
+		void shouldSerializeLocalDateTime() throws JsonProcessingException {
+			var localDateTimeString = "2020-08-25T12:57:36.069665";
+			var dateTime = LocalDateTime.parse(localDateTimeString);
+			var result = objectMapper.writeValueAsString(dateTime);
+			assertThat(result).isEqualTo("{\"T\":\"" +localDateTimeString +"\"}");
+		}
+
+		@Test
+		void shouldSerializeZonedDateTime() throws JsonProcessingException {
+			var zonedDateTimeString = "2020-08-25T13:03:39.11733+01:00[Europe/London]";
+			var dateTime = ZonedDateTime.parse(zonedDateTimeString);
+			var result = objectMapper.writeValueAsString(dateTime);
+			assertThat(result).isEqualTo("{\"T\":\"" +zonedDateTimeString +"\"}");
 		}
 	}
 

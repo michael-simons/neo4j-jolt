@@ -15,6 +15,7 @@
  */
 package ac.simons.neo4j.jolt;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -26,9 +27,11 @@ import java.util.function.Function;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.spatial.Point;
+import org.neo4j.values.storable.DurationValue;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdDelegatingSerializer;
+import org.apache.commons.lang.time.DurationFormatUtils;
 
 public enum JoltModule {
 
@@ -79,6 +82,7 @@ public enum JoltModule {
 			this.addSerializer(new JoltDelegatingValueSerializer<>(byte[].class, Sigil.BINARY, JoltModuleImpl::toHexString));
 			this.addSerializer(new JoltDelegatingValueSerializer<>(Point.class, Sigil.SPATIAL, new PointToWKT()));
 
+			//todo are we missing any more time/date types?
 			this.addSerializer(new JoltDelegatingValueSerializer<>(LocalDate.class, Sigil.TIME,
 				DateTimeFormatter.ISO_LOCAL_DATE::format));
 			this.addSerializer(new JoltDelegatingValueSerializer<>(OffsetTime.class, Sigil.TIME,
@@ -89,7 +93,8 @@ public enum JoltModule {
 				DateTimeFormatter.ISO_ZONED_DATE_TIME::format));
 			this.addSerializer(new JoltDelegatingValueSerializer<>(LocalDateTime.class, Sigil.TIME,
 				DateTimeFormatter.ISO_LOCAL_DATE_TIME::format));
-			// TODO Duration missing
+			this.addSerializer(new JoltDelegatingValueSerializer<>( DurationValue.class, Sigil.TIME,
+																	DurationValue::toString ));
 
 			this.addSerializer(new StdDelegatingSerializer(Label.class, new JoltLabelConverter()));
 			this.addSerializer(
