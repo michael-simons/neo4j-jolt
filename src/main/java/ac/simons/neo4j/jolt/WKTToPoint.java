@@ -19,44 +19,29 @@
  */
 package ac.simons.neo4j.jolt;
 
-import java.util.Arrays;
-import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
-enum Sigil {
-	INTEGER("Z"),
-	REAL("R"),
-	UNICODE("U"),
-	BINARY("#"),
-	LIST("[]"),
-	MAP("{}"),
-	TIME("T"),
-	SPATIAL("@"),
-	NODE("()"),
-	RELATIONSHIP("->"),
-	RELATIONSHIP_REVERSED("<-"),
-	PATH(".."),
-	BOOLEAN("?"),
-	NULL("");
+import org.neo4j.graphdb.spatial.Point;
+import org.neo4j.values.storable.CoordinateReferenceSystem;
+import org.neo4j.values.storable.Values;
 
-	Sigil(String value) {
-		this.value = value;
-	}
+final class WKTToPoint implements Function<String, Point> {
+	private final static Pattern WKT_PATTERN = Pattern.compile("SRID=(\\d+);\\s*POINT\\(\\s*(\\S+)\\s+(\\S+)\\s*\\)");
 
-	private final String value;
+	@Override
+	public Point apply(String value) {
 
-	public String getValue() {
-		return value;
-	}
+	    var matcher = WKT_PATTERN.matcher(value);
 
-	private final static Map<String, Sigil> REVERSE_LOOKUP = Arrays.stream(Sigil.values())
-		.collect(Collectors.toUnmodifiableMap(Sigil::getValue, Function.identity()));
-
-	static Sigil ofLiteral(String value) {
-		if (!REVERSE_LOOKUP.containsKey(value)) {
-			throw new IllegalArgumentException(String.format("No Sigil with value '%s'.", value));
+		if (!matcher.matches()) {
+			throw new IllegalArgumentException(String.format("Illegal %s value: %s", Sigil.SPATIAL, value));
 		}
-		return REVERSE_LOOKUP.get(value);
+
+		return Values.pointValue(
+		    CoordinateReferenceSystem.get(Integer.valueOf(matcher.group(1))),
+            Double.parseDouble(matcher.group(2)),
+            Double.parseDouble(matcher.group(3))
+        );
 	}
 }

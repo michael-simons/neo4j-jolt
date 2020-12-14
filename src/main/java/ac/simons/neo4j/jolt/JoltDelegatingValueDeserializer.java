@@ -19,44 +19,24 @@
  */
 package ac.simons.neo4j.jolt;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.io.IOException;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-enum Sigil {
-	INTEGER("Z"),
-	REAL("R"),
-	UNICODE("U"),
-	BINARY("#"),
-	LIST("[]"),
-	MAP("{}"),
-	TIME("T"),
-	SPATIAL("@"),
-	NODE("()"),
-	RELATIONSHIP("->"),
-	RELATIONSHIP_REVERSED("<-"),
-	PATH(".."),
-	BOOLEAN("?"),
-	NULL("");
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
 
-	Sigil(String value) {
-		this.value = value;
+final class JoltDelegatingValueDeserializer<T> extends JoltStdDeserializer<T> {
+
+	private final Function<String, T> converter;
+
+	JoltDelegatingValueDeserializer(Class<T> t, Sigil sigil, Function<String, T> converter) {
+		super(t, sigil);
+		this.converter = converter;
 	}
 
-	private final String value;
+	@Override
+	public T deserializeImpl(JsonParser p, DeserializationContext ctxt) throws IOException {
 
-	public String getValue() {
-		return value;
-	}
-
-	private final static Map<String, Sigil> REVERSE_LOOKUP = Arrays.stream(Sigil.values())
-		.collect(Collectors.toUnmodifiableMap(Sigil::getValue, Function.identity()));
-
-	static Sigil ofLiteral(String value) {
-		if (!REVERSE_LOOKUP.containsKey(value)) {
-			throw new IllegalArgumentException(String.format("No Sigil with value '%s'.", value));
-		}
-		return REVERSE_LOOKUP.get(value);
+		return converter.apply(getValueAsString(p));
 	}
 }

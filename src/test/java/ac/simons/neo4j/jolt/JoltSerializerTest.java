@@ -15,17 +15,31 @@
  */
 package ac.simons.neo4j.jolt;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.Temporal;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.neo4j.graphdb.Label;
@@ -33,6 +47,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.values.storable.CoordinateReferenceSystem;
+import org.neo4j.values.storable.DurationValue;
 import org.neo4j.values.storable.Values;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -128,6 +143,42 @@ class JoltSerializerTest {
 			var point = Values.pointValue(CoordinateReferenceSystem.WGS84, 12.994823, 55.612191);
 			var result = objectMapper.writeValueAsString(point);
 			assertThat(result).isEqualTo("{\"@\":\"SRID=4326;POINT(12.994823 55.612191)\"}");
+		}
+	}
+
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	class TemporalTypes {
+
+		Stream<Arguments> temporals() {
+			return Stream.of(
+				Arguments.of(LocalDate.of(2020, 12, 14), "2020-12-14"),
+				Arguments.of(OffsetTime.of(LocalTime.of(21, 21, 0), ZoneOffset.ofHours(4)), "21:21:00+04:00"),
+				Arguments.of(LocalTime.of(21, 21, 0), "21:21:00"),
+				Arguments.of(ZonedDateTime.of(
+					LocalDate.of(2020, 12, 14), LocalTime.of(17, 14, 0), ZoneId.of("Europe/Berlin")),
+					"2020-12-14T17:14:00+01:00[Europe/Berlin]"),
+				Arguments.of(LocalDateTime.of(LocalDate.of(2020, 12, 14), LocalTime.of(17, 14, 0)),
+					"2020-12-14T17:14:00")
+			);
+		}
+
+		@ParameterizedTest
+		@MethodSource("temporals")
+		void shouldSerializeTemporals(Temporal t, String expectedValue) throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString(t);
+			assertThat(result).isEqualTo(String.format("{\"T\":\"%s\"}", expectedValue));
+		}
+
+		@Test
+		void shouldSerializeDurationValue() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString(DurationValue.duration(Duration.ofHours(23).plusMinutes(21)));
+			assertThat(result).isEqualTo(String.format("{\"T\":\"%s\"}", "PT23H21M"));
+
+			result = objectMapper.writeValueAsString(DurationValue.duration(Period.ofDays(42)));
+			assertThat(result).isEqualTo(String.format("{\"T\":\"%s\"}", "P42D"));
 		}
 	}
 
