@@ -46,7 +46,7 @@ class JoltSerializerTest {
 	JoltSerializerTest() {
 
 		this.objectMapper = new ObjectMapper();
-		this.objectMapper.registerModule(JoltModule.DEFAULT.getInstance());
+		this.objectMapper.registerModule(JoltModule.STRICT.getInstance());
 	}
 
 	@Nested
@@ -57,7 +57,7 @@ class JoltSerializerTest {
 		SpareMode() {
 
 			this.spareObjectMapper = new ObjectMapper();
-			this.spareObjectMapper.registerModule(JoltModule.SPARSE.getInstance());
+			this.spareObjectMapper.registerModule(JoltModule.DEFAULT.getInstance());
 		}
 
 		@Test
@@ -197,31 +197,15 @@ class JoltSerializerTest {
 			var writer = objectMapper.writerWithDefaultPrettyPrinter();
 			var result = writer.writeValueAsString(node);
 			assertThat(result).isEqualTo("{\n"
-				+ "  \"()\" : {\n"
-				+ "    \"id\" : {\n"
-				+ "      \"Z\" : \"123\"\n"
-				+ "    },\n"
-				+ "    \"labels\" : {\n"
-				+ "      \"[]\" : [ {\n"
-				+ "        \"U\" : \"Person\"\n"
-				+ "      }, {\n"
-				+ "        \"U\" : \"Female\"\n"
-				+ "      }, {\n"
-				+ "        \"U\" : \"Human Being\"\n"
-				+ "      } ]\n"
-				+ "    },\n"
-				+ "    \"properties\" : {\n"
-				+ "      \"{}\" : {\n"
-				+ "        \"age\" : {\n"
-				+ "          \"Z\" : \"33\"\n"
-				+ "        },\n"
-				+ "        \"name\" : {\n"
-				+ "          \"U\" : \"Alice\"\n"
-				+ "        }\n"
-				+ "      }\n"
-				+ "    }\n"
-				+ "  }\n"
-				+ "}");
+										 + "  \"()\" : [ 123, [ \"Person\", \"Female\", \"Human Being\" ], {\n"
+										 + "    \"age\" : {\n"
+										 + "      \"Z\" : \"33\"\n"
+										 + "    },\n"
+										 + "    \"name\" : {\n"
+										 + "      \"U\" : \"Alice\"\n"
+										 + "    }\n"
+										 + "  } ]\n"
+										 + "}");
 		}
 
 		@Test
@@ -232,7 +216,7 @@ class JoltSerializerTest {
 			when(node.getAllProperties()).thenReturn(new TreeMap<>(Map.of("prop1", 1, "prop2", "Peng")));
 			var result = objectMapper.writeValueAsString(node);
 			assertThat(result).isEqualTo(
-				"{\"()\":{\"id\":{\"Z\":\"4711\"},\"labels\":{\"[]\":[{\"U\":\"A\"},{\"U\":\"B\"}]},\"properties\":{\"{}\":{\"prop1\":{\"Z\":\"1\"},\"prop2\":{\"U\":\"Peng\"}}}}}");
+				"{\"()\":[4711,[\"A\",\"B\"],{\"prop1\":{\"Z\":\"1\"},\"prop2\":{\"U\":\"Peng\"}}]}");
 		}
 
 		@Test
@@ -242,7 +226,7 @@ class JoltSerializerTest {
 			when(node.getLabels()).thenReturn(List.of());
 			var result = objectMapper.writeValueAsString(node);
 			assertThat(result)
-				.isEqualTo("{\"()\":{\"id\":{\"Z\":\"4711\"},\"labels\":{\"[]\":[]},\"properties\":{\"{}\":{}}}}");
+				.isEqualTo("{\"()\":[4711,[],{}]}");
 		}
 
 		@Test
@@ -257,7 +241,7 @@ class JoltSerializerTest {
 			var result = objectMapper.writeValueAsString(relationship);
 			assertThat(result)
 				.isEqualTo(
-					"{\"->\":{\"id\":{\"Z\":\"4711\"},\"type\":{\"U\":\"KNOWS\"},\"startNodeId\":{\"Z\":\"123\"},\"endNodeId\":{\"Z\":\"124\"},\"properties\":{\"{}\":{\"since\":{\"Z\":\"1999\"}}}}}");
+					"{\"->\":[4711,123,\"KNOWS\",124,{\"since\":{\"Z\":\"1999\"}}]}");
 
 		}
 	}

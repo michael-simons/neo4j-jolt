@@ -23,25 +23,26 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-import org.neo4j.graphdb.Relationship;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
-final class JoltRelationshipSerializer extends StdSerializer<Relationship>
+/**
+ * Custom relationship serializer to flip the relationship sigil when use with {@link JoltPathSerializer} to allow flowing paths.
+ */
+final class JoltRelationshipReversedSerializer extends StdSerializer<JoltRelationship>
 {
-    JoltRelationshipSerializer()
+    JoltRelationshipReversedSerializer()
     {
-        super( Relationship.class );
+        super( JoltRelationship.class );
     }
 
     @Override
-    public void serialize( Relationship relationship, JsonGenerator generator, SerializerProvider provider )
+    public void serialize( JoltRelationship relationship, JsonGenerator generator, SerializerProvider provider )
             throws IOException
     {
         generator.writeStartObject( relationship );
-        generator.writeFieldName( Sigil.RELATIONSHIP.getValue() );
+        generator.writeFieldName( Sigil.RELATIONSHIP_REVERSED.getValue() );
 
         generator.writeStartArray();
 

@@ -20,54 +20,41 @@
 package ac.simons.neo4j.jolt;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Optional;
-
-import org.neo4j.graphdb.Label;
-import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
-final class JoltNodeSerializer extends StdSerializer<Node>
+/**
+ * A dedicated long serializer is needed to handle writing the correct sigil depending on the value. If the long value is inside the Int32 range we write a Int
+ * sigil, otherwise we use the Real sigil.
+ *
+ * @param <T> long or Long
+ */
+final class JoltLongSerializer<T> extends StdSerializer<T>
 {
-    JoltNodeSerializer()
+    JoltLongSerializer( Class<T> t )
     {
-        super( Node.class );
+        super( t );
     }
 
     @Override
-    public void serialize( Node node, JsonGenerator generator, SerializerProvider provider ) throws IOException
+    public void serialize( T value, JsonGenerator generator, SerializerProvider provider ) throws IOException
     {
-        generator.writeStartObject( node );
-        generator.writeFieldName( Sigil.NODE.getValue() );
+        generator.writeStartObject( value );
 
-        generator.writeStartArray();
+        long longValue = (long) value;
 
-        generator.writeNumber( node.getId() );
-
-        generator.writeStartArray();
-        for ( Label label : node.getLabels() )
+        if ( longValue >= Integer.MIN_VALUE && longValue < Integer.MAX_VALUE )
         {
-            generator.writeString( label.name() );
+            generator.writeFieldName( Sigil.INTEGER.getValue() );
         }
-        generator.writeEndArray();
-
-        var properties = Optional.ofNullable( node.getAllProperties() ).orElseGet( Collections::emptyMap );
-
-        generator.writeStartObject();
-
-        for ( var entry : properties.entrySet() )
+        else
         {
-            generator.writeFieldName( entry.getKey() );
-            generator.writeObject( entry.getValue() );
+            generator.writeFieldName( Sigil.REAL.getValue() );
         }
 
-        generator.writeEndObject();
-
-        generator.writeEndArray();
-
+        generator.writeString( String.valueOf( longValue ) );
         generator.writeEndObject();
     }
 }
