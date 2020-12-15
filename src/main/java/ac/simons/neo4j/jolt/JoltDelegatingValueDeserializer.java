@@ -23,20 +23,21 @@ import java.io.IOException;
 import java.util.function.Function;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
 
-final class JoltDelegatingValueDeserializer<T> extends JoltStdDeserializer<T> {
+final class JoltDelegatingValueDeserializer<T> extends StdScalarDeserializer<T> {
 
 	private final Function<String, T> converter;
 
-	JoltDelegatingValueDeserializer(Class<T> t, Sigil sigil, Function<String, T> converter) {
-		super(t, sigil);
+	JoltDelegatingValueDeserializer(Class<T> t, Function<String, T> converter) {
+		super(t);
 		this.converter = converter;
 	}
 
 	@Override
-	public T deserializeImpl(JsonParser p, DeserializationContext ctxt) throws IOException {
-
-		return converter.apply(getValueAsString(p));
+	public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+		return converter.apply(p.getValueAsString());
 	}
 }

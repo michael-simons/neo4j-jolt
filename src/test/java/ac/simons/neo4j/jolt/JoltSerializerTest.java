@@ -56,12 +56,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JoltSerializerTest {
 
-	private final ObjectMapper objectMapper;
+	private final JoltCodec objectMapper;
 
 	JoltSerializerTest() {
 
-		this.objectMapper = new ObjectMapper();
-		this.objectMapper.registerModule(JoltModule.STRICT.getInstance());
+		this.objectMapper = new JoltCodec(true);
 	}
 
 	@Nested
@@ -71,8 +70,7 @@ class JoltSerializerTest {
 
 		SpareMode() {
 
-			this.spareObjectMapper = new ObjectMapper();
-			this.spareObjectMapper.registerModule(JoltModule.DEFAULT.getInstance());
+			this.spareObjectMapper = new JoltCodec(false);
 		}
 
 		@Test
@@ -186,10 +184,31 @@ class JoltSerializerTest {
 	class Arrays {
 
 		@Test
+		void shouldSerializeHeterogeneousArray() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString(new Object[] { 0L, true, "Hallo!", 42.23, LocalDate.of(2020,3,13) });
+			assertThat(result).isEqualTo("[{\"Z\":\"0\"},{\"?\":\"true\"},{\"U\":\"Hallo!\"},{\"R\":\"42.23\"},{\"T\":\"2020-03-13\"}]");
+		}
+
+		@Test
 		void shouldSerializeLongArray() throws JsonProcessingException {
 
 			var result = objectMapper.writeValueAsString(new Long[] { 0L, 1L, 2L });
 			assertThat(result).isEqualTo("[{\"Z\":\"0\"},{\"Z\":\"1\"},{\"Z\":\"2\"}]");
+		}
+
+		@Test
+		void shouldSerializeStringArray() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString(new String[] { "A", "B" });
+			assertThat(result).isEqualTo("[{\"U\":\"A\"},{\"U\":\"B\"}]");
+		}
+
+		@Test
+		void shouldSerializeBooleanAray() throws JsonProcessingException {
+
+			var result = objectMapper.writeValueAsString(new Boolean[] { true, false });
+			assertThat(result).isEqualTo("[{\"?\":\"true\"},{\"?\":\"false\"}]");
 		}
 
 		@Test
@@ -203,13 +222,6 @@ class JoltSerializerTest {
 
 	@Nested
 	class Collections {
-
-		@Test
-		void shouldSerializeArrays() throws JsonProcessingException {
-
-			var result = objectMapper.writeValueAsString(new String[] { "A", "B" });
-			assertThat(result).isEqualTo("[{\"U\":\"A\"},{\"U\":\"B\"}]");
-		}
 
 		@Test
 		void shouldSerializeHomogenousList() throws JsonProcessingException {

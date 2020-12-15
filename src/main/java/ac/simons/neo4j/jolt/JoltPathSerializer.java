@@ -27,9 +27,9 @@ import org.neo4j.graphdb.Relationship;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.ser.std.StdScalarSerializer;
 
-final class JoltPathSerializer extends StdSerializer<Path>
+final class JoltPathSerializer extends StdScalarSerializer<Path>
 {
     JoltPathSerializer()
     {
@@ -39,9 +39,6 @@ final class JoltPathSerializer extends StdSerializer<Path>
     @Override
     public void serialize( Path path, JsonGenerator generator, SerializerProvider provider ) throws IOException
     {
-        generator.writeStartObject( path );
-        generator.writeFieldName( Sigil.PATH.getValue() );
-
         generator.writeStartArray();
 
         var it = path.iterator();
@@ -74,7 +71,5 @@ final class JoltPathSerializer extends StdSerializer<Path>
         }
 
         generator.writeEndArray();
-
-        generator.writeEndObject();
     }
 }

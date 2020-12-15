@@ -19,44 +19,92 @@
  */
 package ac.simons.neo4j.jolt;
 
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAmount;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.spatial.Point;
+import org.neo4j.values.storable.DurationValue;
+
 enum Sigil {
-	INTEGER("Z"),
-	REAL("R"),
-	UNICODE("U"),
-	BINARY("#"),
-	LIST("[]"),
-	MAP("{}"),
-	TIME("T"),
-	SPATIAL("@"),
-	NODE("()"),
-	RELATIONSHIP("->"),
-	RELATIONSHIP_REVERSED("<-"),
-	PATH(".."),
-	BOOLEAN("?"),
-	NULL("");
 
-	Sigil(String value) {
-		this.value = value;
-	}
-
-	private final String value;
-
-	public String getValue() {
-		return value;
-	}
+	INTEGER("Z", Integer.class),
+	REAL("R", Number.class, Long.class, Double.class),
+	UNICODE("U", String.class),
+	BINARY("#", byte[].class),
+	LIST("[]", List.class),
+	MAP("{}", Map.class),
+	TIME("T", Temporal.class),
+	TEMPORAL_AMOUNT("TA", TIME, TemporalAmount.class),
+	SPATIAL("@", Point.class),
+	NODE("()", Node.class),
+	RELATIONSHIP("->", Relationship.class),
+	RELATIONSHIP_REVERSED("<-", JoltRelationship.class),
+	PATH("..", Path.class),
+	BOOLEAN("?", Boolean.class),
+	NULL("", Void.class);
 
 	private final static Map<String, Sigil> REVERSE_LOOKUP = Arrays.stream(Sigil.values())
 		.collect(Collectors.toUnmodifiableMap(Sigil::getValue, Function.identity()));
+
+	private final String value;
+
+	private final Sigil aliasFor;
+
+	private final Class<?>[] types;
+
+	Sigil(String value, Class... types) {
+		this.value = value;
+		this.types = types;
+		this.aliasFor = null;
+	}
+
+	Sigil(String value, Sigil aliasFor, Class... types) {
+		this.value = value;
+		this.aliasFor = aliasFor;
+		this.types = types;
+	}
+
+	String getValue() {
+		return this.value;
+	}
+
+	String getAliasedValueOrValue() {
+		return this.aliasFor == null ? this.value : this.aliasFor.value;
+	}
+
+	Class<?>[] getTypes() {
+		return types;
+	}
 
 	static Sigil ofLiteral(String value) {
 		if (!REVERSE_LOOKUP.containsKey(value)) {
 			throw new IllegalArgumentException(String.format("No Sigil with value '%s'.", value));
 		}
 		return REVERSE_LOOKUP.get(value);
+	}
+
+	static Sigil forType(Class<?> type) {
+
+		if (type == null) {
+			return Sigil.NULL;
+		}
+
+		for (Sigil sigil : Sigil.values()) {
+			for (Class<?> supportedType : sigil.types) {
+				if (supportedType.isAssignableFrom(type)) {
+					return sigil;
+				}
+			}
+		}
+
+		throw new IllegalArgumentException(type + " is not a supported type");
 	}
 }

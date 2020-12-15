@@ -28,9 +28,9 @@ import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.ser.std.StdScalarSerializer;
 
-final class JoltNodeSerializer extends StdSerializer<Node>
+final class JoltNodeSerializer extends StdScalarSerializer<Node>
 {
     JoltNodeSerializer()
     {
@@ -40,9 +40,6 @@ final class JoltNodeSerializer extends StdSerializer<Node>
     @Override
     public void serialize( Node node, JsonGenerator generator, SerializerProvider provider ) throws IOException
     {
-        generator.writeStartObject( node );
-        generator.writeFieldName( Sigil.NODE.getValue() );
-
         generator.writeStartArray();
 
         generator.writeNumber( node.getId() );
@@ -67,7 +64,5 @@ final class JoltNodeSerializer extends StdSerializer<Node>
         generator.writeEndObject();
 
         generator.writeEndArray();
-
-        generator.writeEndObject();
     }
 }

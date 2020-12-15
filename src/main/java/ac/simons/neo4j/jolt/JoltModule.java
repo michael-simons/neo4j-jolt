@@ -19,20 +19,23 @@
  */
 package ac.simons.neo4j.jolt;
 
-import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAmount;
+import java.time.temporal.TemporalQuery;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.spatial.Point;
-import org.neo4j.register.Register;
 import org.neo4j.values.storable.DurationValue;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -71,19 +74,18 @@ enum JoltModule
 
             if ( strictModeEnabled )
             {
-                this.addSerializer( new JoltDelegatingValueSerializer<>( String.class, Sigil.UNICODE, Function.identity() ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( String.class, Function.identity() ) );
 
-                this.addSerializer( new JoltDelegatingValueSerializer<>( boolean.class, Sigil.BOOLEAN, String::valueOf ) );
-                this.addSerializer( new JoltDelegatingValueSerializer<>( Boolean.class, Sigil.BOOLEAN, String::valueOf ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( boolean.class, String::valueOf ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( Boolean.class, String::valueOf ) );
 
-                this.addSerializer( new JoltDelegatingValueSerializer<>( int.class, Sigil.INTEGER, String::valueOf ) );
-                this.addSerializer( new JoltDelegatingValueSerializer<>( Integer.class, Sigil.INTEGER, String::valueOf ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( int.class, String::valueOf ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( Integer.class, String::valueOf ) );
 
-                this.addSerializer( new JoltLongSerializer<>( long.class ) );
-                this.addSerializer( new JoltLongSerializer<>( Long.class ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( long.class, String::valueOf ) );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( Long.class, String::valueOf ) );
 
-                this.addSerializer( new JoltDelegatingValueSerializer<>( Void.class, Sigil.NULL, String::valueOf ) );
-                this.addSerializer( new JoltListSerializer() );
+                this.addSerializer( new JoltDelegatingValueSerializer<>( Void.class, String::valueOf ) );
             }
             else
             {
@@ -94,25 +96,19 @@ enum JoltModule
                 this.addSerializer( new JoltSparseNumberSerializer<>( Long.class, Sigil.INTEGER, String::valueOf ) );
             }
 
-            this.addSerializer( new JoltDelegatingValueSerializer<>( double.class, Sigil.REAL, String::valueOf ) );
-            this.addSerializer( new JoltDelegatingValueSerializer<>( Double.class, Sigil.REAL, String::valueOf ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( double.class, String::valueOf ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( Double.class, String::valueOf ) );
 
-            this.addSerializer( new JoltDelegatingValueSerializer<>( byte[].class, Sigil.BINARY, JoltModuleImpl::toHexString ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( byte[].class, JoltModuleImpl::toHexString ) );
 
-            this.addSerializer( new JoltDelegatingValueSerializer<>( Point.class, Sigil.SPATIAL, new PointToWKT() ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( Point.class, new PointToWKT() ) );
 
-            this.addSerializer( new JoltDelegatingValueSerializer<>( LocalDate.class, Sigil.TIME,
-                DateTimeFormatter.ISO_LOCAL_DATE::format ) );
-            this.addSerializer( new JoltDelegatingValueSerializer<>( OffsetTime.class, Sigil.TIME,
-                DateTimeFormatter.ISO_OFFSET_TIME::format ) );
-            this.addSerializer( new JoltDelegatingValueSerializer<>( LocalTime.class, Sigil.TIME,
-                DateTimeFormatter.ISO_LOCAL_TIME::format ) );
-            this.addSerializer( new JoltDelegatingValueSerializer<>( ZonedDateTime.class, Sigil.TIME,
-                DateTimeFormatter.ISO_ZONED_DATE_TIME::format ) );
-            this.addSerializer( new JoltDelegatingValueSerializer<>( LocalDateTime.class, Sigil.TIME,
-                DateTimeFormatter.ISO_LOCAL_DATE_TIME::format ) );
-            this.addSerializer( new JoltDelegatingValueSerializer<>( DurationValue.class, Sigil.TIME,
-                DurationValue::toString ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( LocalDate.class, DateTimeFormatter.ISO_LOCAL_DATE::format ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( OffsetTime.class, DateTimeFormatter.ISO_OFFSET_TIME::format ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( LocalTime.class, DateTimeFormatter.ISO_LOCAL_TIME::format ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( ZonedDateTime.class, DateTimeFormatter.ISO_ZONED_DATE_TIME::format ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( LocalDateTime.class, DateTimeFormatter.ISO_LOCAL_DATE_TIME::format ) );
+            this.addSerializer( new JoltDelegatingValueSerializer<>( DurationValue.class, DurationValue::toString ) );
 
             this.addSerializer( new StdDelegatingSerializer( Label.class, new JoltLabelConverter() ) );
             this.addSerializer(
@@ -122,8 +118,6 @@ enum JoltModule
             this.addSerializer( new JoltRelationshipSerializer() );
             this.addSerializer( new JoltRelationshipReversedSerializer() );
             this.addSerializer( new JoltPathSerializer() );
-
-            this.addSerializer( new JoltMapSerializer() );
         }
 
         private void addDeserializers( boolean strictModeEnabled )
@@ -131,42 +125,56 @@ enum JoltModule
 
             if ( strictModeEnabled )
             {
-                this.addDeserializer(String.class, new JoltDelegatingValueDeserializer<>( String.class, Sigil.UNICODE, Function.identity() ) );
+                this.addDeserializer(String.class, new JoltDelegatingValueDeserializer<>( String.class, Function.identity() ) );
 
-                this.addDeserializer(boolean.class, new JoltDelegatingValueDeserializer<>( boolean.class, Sigil.BOOLEAN, Boolean::parseBoolean ) );
-                this.addDeserializer(Boolean.class, new JoltDelegatingValueDeserializer<>( Boolean.class, Sigil.BOOLEAN, Boolean::valueOf ) );
+                this.addDeserializer(boolean.class, new JoltDelegatingValueDeserializer<>( boolean.class, Boolean::parseBoolean ) );
+                this.addDeserializer(Boolean.class, new JoltDelegatingValueDeserializer<>( Boolean.class, Boolean::valueOf ) );
 
-                this.addDeserializer(int.class, new JoltDelegatingValueDeserializer<>( int.class, Sigil.INTEGER, Integer::parseInt ) );
-                this.addDeserializer(Integer.class, new JoltDelegatingValueDeserializer<>( Integer.class, Sigil.INTEGER, Integer::valueOf ) );
+                this.addDeserializer(int.class, new JoltDelegatingValueDeserializer<>( int.class, Integer::parseInt ) );
+                this.addDeserializer(Integer.class, new JoltDelegatingValueDeserializer<>( Integer.class, Integer::valueOf ) );
 
-                // Needed to support long[] arrays directly.
-                this.addDeserializer(Long.class, new JoltDelegatingValueDeserializer<>( Long.class, Sigil.INTEGER, Long::valueOf ) );
-
-                this.addDeserializer( List.class, new JoltListDeserializer() );
+                this.addDeserializer( long.class, new JoltDelegatingValueDeserializer<>( long.class, Long::parseLong ) );
+                this.addDeserializer( Long.class, new JoltDelegatingValueDeserializer<>( Long.class, Long::valueOf ) );
             }
             else
             {
                 // TODO Unsure…?
             }
 
-            this.addDeserializer( Number.class, new JoltRealDeserializer( ) );
+            this.addDeserializer(Number.class, new JoltDelegatingValueDeserializer<>( Number.class,  v -> {
 
-            this.addDeserializer( byte[].class, new JoltDelegatingValueDeserializer<>( byte[].class, Sigil.BINARY, JoltModuleImpl::fromHexString ) );
+                // Probably not the best place…
+                try {
+                    return Long.parseLong(v);
+                } catch (NumberFormatException e) {
+                    return Double.parseDouble(v);
+                }
+            } ));
 
-            this.addDeserializer( Point.class, new JoltDelegatingValueDeserializer<>( Point.class, Sigil.SPATIAL, new WKTToPoint() ) );
+            this.addDeserializer( byte[].class, new JoltDelegatingValueDeserializer<>( byte[].class, JoltModuleImpl::fromHexString ) );
 
-            this.addDeserializer( LocalDate.class, new JoltDelegatingValueDeserializer<>( LocalDate.class, Sigil.TIME,
-                v -> DateTimeFormatter.ISO_LOCAL_DATE.parse(v, LocalDate::from) ) );
-            this.addDeserializer( OffsetTime.class, new JoltDelegatingValueDeserializer<>( OffsetTime.class, Sigil.TIME,
-                v -> DateTimeFormatter.ISO_OFFSET_TIME.parse(v, OffsetTime::from) ) );
-            this.addDeserializer( LocalTime.class, new JoltDelegatingValueDeserializer<>( LocalTime.class, Sigil.TIME,
-                v -> DateTimeFormatter.ISO_LOCAL_TIME.parse(v, LocalTime::from) ) );
-            this.addDeserializer( ZonedDateTime.class, new JoltDelegatingValueDeserializer<>( ZonedDateTime.class, Sigil.TIME,
-                v -> DateTimeFormatter.ISO_ZONED_DATE_TIME.parse(v, ZonedDateTime::from) ) );
-            this.addDeserializer( LocalDateTime.class, new JoltDelegatingValueDeserializer<>( LocalDateTime.class, Sigil.TIME,
-                v -> DateTimeFormatter.ISO_LOCAL_DATE_TIME.parse(v, LocalDateTime::from) ) );
-            this.addDeserializer( DurationValue.class, new JoltDelegatingValueDeserializer<>( DurationValue.class, Sigil.TIME,
-                DurationValue::parse ) );
+            this.addDeserializer( Point.class, new JoltDelegatingValueDeserializer<>( Point.class, new WKTToPoint() ) );
+
+            // See above, this is Kraut und Rüben!
+            var supportedTemporals =
+                Map.<DateTimeFormatter, TemporalQuery<Temporal>>of(
+                    DateTimeFormatter.ISO_LOCAL_DATE, LocalDate::from,
+                    DateTimeFormatter.ISO_OFFSET_TIME, OffsetTime::from,
+                    DateTimeFormatter.ISO_LOCAL_TIME, LocalTime::from,
+                    DateTimeFormatter.ISO_ZONED_DATE_TIME, ZonedDateTime::from,
+                    DateTimeFormatter.ISO_LOCAL_DATE_TIME, LocalDateTime::from
+                );
+            this.addDeserializer(Temporal.class, new JoltDelegatingValueDeserializer<>(Temporal.class,
+                v -> {
+                    for (var x : supportedTemporals.entrySet()) {
+                        try {
+                            return x.getKey().parse(v, x.getValue());
+                        } catch (DateTimeParseException e) {
+                        }
+                    }
+                    throw new DateTimeException("No parser could handle the given value " + v);
+                }));
+            this.addDeserializer(TemporalAmount.class, new JoltDelegatingValueDeserializer<>(TemporalAmount.class, DurationValue::parse));
         }
 
         private static String toHexString( byte[] bytes )

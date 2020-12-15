@@ -25,12 +25,12 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.ser.std.StdScalarSerializer;
 
 /**
  * Custom relationship serializer to flip the relationship sigil when use with {@link JoltPathSerializer} to allow flowing paths.
  */
-final class JoltRelationshipReversedSerializer extends StdSerializer<JoltRelationship>
+final class JoltRelationshipReversedSerializer extends StdScalarSerializer<JoltRelationship>
 {
     JoltRelationshipReversedSerializer()
     {
@@ -41,9 +41,6 @@ final class JoltRelationshipReversedSerializer extends StdSerializer<JoltRelatio
     public void serialize( JoltRelationship relationship, JsonGenerator generator, SerializerProvider provider )
             throws IOException
     {
-        generator.writeStartObject( relationship );
-        generator.writeFieldName( Sigil.RELATIONSHIP_REVERSED.getValue() );
-
         generator.writeStartArray();
 
         generator.writeNumber( relationship.getId() );
@@ -66,6 +63,5 @@ final class JoltRelationshipReversedSerializer extends StdSerializer<JoltRelatio
         generator.writeEndObject();
 
         generator.writeEndArray();
-        generator.writeEndObject();
     }
 }

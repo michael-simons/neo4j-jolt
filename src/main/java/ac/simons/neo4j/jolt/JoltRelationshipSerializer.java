@@ -27,9 +27,9 @@ import org.neo4j.graphdb.Relationship;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.ser.std.StdScalarSerializer;
 
-final class JoltRelationshipSerializer extends StdSerializer<Relationship>
+final class JoltRelationshipSerializer extends StdScalarSerializer<Relationship>
 {
     JoltRelationshipSerializer()
     {
@@ -40,9 +40,6 @@ final class JoltRelationshipSerializer extends StdSerializer<Relationship>
     public void serialize( Relationship relationship, JsonGenerator generator, SerializerProvider provider )
             throws IOException
     {
-        generator.writeStartObject( relationship );
-        generator.writeFieldName( Sigil.RELATIONSHIP.getValue() );
-
         generator.writeStartArray();
 
         generator.writeNumber( relationship.getId() );
@@ -65,6 +62,5 @@ final class JoltRelationshipSerializer extends StdSerializer<Relationship>
         generator.writeEndObject();
 
         generator.writeEndArray();
-        generator.writeEndObject();
     }
 }

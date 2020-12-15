@@ -44,7 +44,7 @@ final class JoltSparseNumberSerializer<T extends Number> extends StdSerializer<T
         this.sigil = sigil;
         this.converter = converter;
 
-        this.delegate = new JoltDelegatingValueSerializer<>( t, sigil, converter );
+        this.delegate = new JoltDelegatingValueSerializer<>( t, converter );
     }
 
     @Override

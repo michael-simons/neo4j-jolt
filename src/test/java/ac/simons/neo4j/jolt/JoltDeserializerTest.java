@@ -13,6 +13,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAmount;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -39,52 +40,7 @@ public class JoltDeserializerTest {
 
 	JoltDeserializerTest() {
 
-		this.objectMapper = new ObjectMapper();
-		this.objectMapper.registerModule(JoltModule.STRICT.getInstance());
-	}
-
-	@Nested
-	class JoltDelegatingValueDeserializerTest {
-
-		@Test
-		void shouldRequireStructOnStrictMode() {
-			assertThatExceptionOfType(JsonProcessingException.class)
-				.isThrownBy(() -> objectMapper.readValue("123", Integer.class))
-				.withMessageMatching("(?s)The provided value is not compatible with Jolt in strict mode:.*");
-		}
-
-		@Test
-		void shouldRequireCorrectSigil() {
-			assertThatExceptionOfType(JsonProcessingException.class)
-				.isThrownBy(() -> objectMapper.readValue("{\"Ä\":\"123\"}", Integer.class))
-				.withMessageMatching("(?s)Jolt does not support a named datatype 'Ä':.*");
-		}
-
-		@Test
-		void shouldMatchSigil() {
-			assertThatExceptionOfType(JsonProcessingException.class)
-				.isThrownBy(() -> objectMapper.readValue("{\"R\":\"123\"}", Integer.class))
-				.withMessageMatching("(?s)Cannot deserialize a value of type REAL into INTEGER:.*");
-		}
-
-		@Test
-		void shouldRequireStringValue() {
-			assertThatExceptionOfType(JsonProcessingException.class)
-				.isThrownBy(() -> objectMapper.readValue("{\"Z\":123}", Integer.class))
-				.withMessageMatching("(?s)Only String values will be parsed in strict mode:.*");
-		}
-
-		@Test
-		void shouldDealWithPrimitivesAndNulLValues() {
-			var expectedMessage = "(?s)Requested value class is 'int' but the value is null or blank:.*";
-			assertThatExceptionOfType(JsonProcessingException.class)
-				.isThrownBy(() -> objectMapper.readValue("{\"Z\":\"\"}", int.class))
-				.withMessageMatching(expectedMessage);
-
-			assertThatExceptionOfType(JsonProcessingException.class)
-				.isThrownBy(() -> objectMapper.readValue("{\"Z\":\" \\t \"}", int.class))
-				.withMessageMatching(expectedMessage);
-		}
+		this.objectMapper = new JoltCodec(true);
 	}
 
 	@Nested
@@ -94,7 +50,7 @@ public class JoltDeserializerTest {
 		void shouldDeserializeInteger() throws JsonProcessingException {
 
 			var result = objectMapper.readValue("{\"Z\":\"123\"}", Integer.class);
-			assertThat(result).isEqualTo(123);
+			assertThat(result).isInstanceOf(Integer.class).isEqualTo(123);
 		}
 
 		@Test
@@ -138,10 +94,31 @@ public class JoltDeserializerTest {
 	class Arrays {
 
 		@Test
+		void shouldDeserializeStringArray() throws JsonProcessingException {
+
+			var result = objectMapper.readValue("[{\"U\":\"A\"},{\"U\":\"B\"}]", String[].class);
+			assertThat(result).isEqualTo(new String[] { "A", "B" });
+		}
+
+		@Test
 		void shouldDeserializeLongArray() throws JsonProcessingException {
 
-			var result = objectMapper.readValue("[{\"Z\":\"0\"},{\"Z\":\"1\"},{\"Z\":\"2\"}]", Long[].class);
+			var result = objectMapper.readValue("[{\"R\":\"0\"},{\"R\":\"1\"},{\"R\":\"2\"}]", Number[].class);
 			assertThat(result).isEqualTo(new Long[] { 0L, 1L, 2L });
+		}
+
+		@Test
+		void shouldDeserializeMixedNumberArray() throws JsonProcessingException {
+
+			var result = objectMapper.readValue("[{\"Z\":\"0\"},{\"R\":\"1\"},{\"Z\":\"2\"}]", Number[].class);
+			assertThat(result).isEqualTo(new Number[] { 0, 1L, 2 });
+		}
+
+		@Test
+		void shouldDeserializeIntegerArray() throws JsonProcessingException {
+
+			var result = objectMapper.readValue("[{\"Z\":\"0\"},{\"Z\":\"1\"},{\"Z\":\"2\"}]", Integer[].class);
+			assertThat(result).isEqualTo(new Integer[] { 0, 1, 2 });
 		}
 
 		@Test
@@ -159,9 +136,9 @@ public class JoltDeserializerTest {
 
 		Stream<Arguments> temporals() {
 			return Stream.of(
-				Arguments.of("{\"T\":\"2020-12-14\"}", LocalDate.of(2020, 12, 14)),
+				Arguments.of("{\"T\":\"2020-12-14\"}",     LocalDate.of(2020, 12, 14)),
 				Arguments.of("{\"T\":\"21:21:00+04:00\"}", OffsetTime.of(LocalTime.of(21, 21, 0), ZoneOffset.ofHours(4))),
-				Arguments.of("{\"T\":\"21:21:00\"}", LocalTime.of(21, 21, 0)),
+				Arguments.of("{\"T\":\"21:21:00\"}",       LocalTime.of(21, 21, 0)),
 				Arguments.of("{\"T\":\"2020-12-14T17:14:00+01:00[Europe/Berlin]\"}",
 					ZonedDateTime.of(
 					LocalDate.of(2020, 12, 14), LocalTime.of(17, 14, 0), ZoneId.of("Europe/Berlin"))),
@@ -174,17 +151,17 @@ public class JoltDeserializerTest {
 		@MethodSource("temporals")
 		void shouldDeserializeTemporals(String t, Temporal expectedValue) throws JsonProcessingException {
 
-			var result = objectMapper.readValue(t, expectedValue.getClass());
-			assertThat(result).isEqualTo(expectedValue);
+			var result = objectMapper.readValue(t, Temporal.class);
+			assertThat(result).isInstanceOf(expectedValue.getClass()).isEqualTo(expectedValue);
 		}
 
 		@Test
 		void shouldDeserializeDurationValue() throws JsonProcessingException {
 
-			var result = objectMapper.readValue(String.format("{\"T\":\"%s\"}", "PT23H21M"), DurationValue.class);
+			var result = objectMapper.readValue(String.format("{\"T\":\"%s\"}", "PT23H21M"), TemporalAmount.class);
 			assertThat(result).isEqualTo(DurationValue.duration(Duration.ofHours(23).plusMinutes(21)));
 
-			result = objectMapper.readValue(String.format("{\"T\":\"%s\"}", "P42D"), DurationValue.class);
+			result = objectMapper.readValue(String.format("{\"T\":\"%s\"}", "P42D"), TemporalAmount.class);
 			assertThat(result).isEqualTo(DurationValue.duration(Period.ofDays(42)));
 		}
 	}
@@ -192,12 +169,7 @@ public class JoltDeserializerTest {
 	@Nested
 	class Collections {
 
-		@Test
-		void shouldDeserializeArrays() throws JsonProcessingException {
 
-			var result = objectMapper.readValue("[{\"U\":\"A\"},{\"U\":\"B\"}]", String[].class);
-			assertThat(result).isEqualTo(new String[] { "A", "B" });
-		}
 
 		@Test
 		void shouldDeserializeHomogenousList() throws JsonProcessingException {
